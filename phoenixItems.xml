@@ -1,0 +1,184 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE MudletPackage>
+<MudletPackage version="1.0">
+    <ScriptPackage>
+        <ScriptGroup isActive="yes" isFolder="yes">
+            <name>Phoenix Items Tracker</name>
+            <packageName></packageName>
+            <script>-------------------------------------------------
+-- This tracker was coded during the GreatHunt --
+--        on thanksgiving weekend, 2011        --
+--  By: ThePhoenix - Great Hunt Score: 12896   --
+--      Rank Overall: 11  - Rank In Tier: 3    --
+--   Hunt Days: 4 - Days Actually Hunted: 2.5  --
+--                Level: 88                    --
+-------------------------------------------------
+phoenix = phoenix or {}
+phoenix.items = phoenix.items or {}
+phoenix.items.wielded = phoenix.items.wielded or {}</script>
+            <eventHandlerList/>
+            <Script isActive="yes" isFolder="no">
+                <name>phoenix_item_Events</name>
+                <packageName></packageName>
+                <script>function phoenix_item_Events(event)
+   local event = event:match(&quot;%w+$&quot;)
+   local func = loadstring(&quot;return phoenix.items:&quot;..event..&quot;()&quot;)
+   local raise, where = func()
+   inv_items = phoenix.items.inv_items
+   room_items = phoenix.items.room_items
+   raiseEvent(&quot;Phoenix Items &quot; .. raise, where)
+end
+</script>
+                <eventHandlerList>
+                    <string>gmcp.Char.Items.Add</string>
+                    <string>gmcp.Char.Items.List</string>
+                    <string>gmcp.Char.Items.Update</string>
+                    <string>gmcp.Char.StatusVars</string>
+                    <string>gmcp.Char.Items.Remove</string>
+                </eventHandlerList>
+            </Script>
+            <Script isActive="yes" isFolder="no">
+                <name>Phoenix Items Functions</name>
+                <packageName></packageName>
+                <script>
+function phoenix.items:Add(event)
+   local location = gmcp.Char.Items.Add.location
+   if location ~= &quot;inv&quot; and location ~= &quot;room&quot; then
+      location = location:match(&quot;%d+$&quot;)
+   end
+   local loc = location .. &quot;_items&quot;
+   local item = gmcp.Char.Items.Add.item
+   if not self[loc] then
+      sendGMCP(&quot;Char.Items.Inv&quot;)
+      return
+   end
+   local item = {}
+   for k,v in pairs(gmcp.Char.Items.Add.item) do
+     item[k] = v
+   end
+   table.insert(self[loc], item)
+   if loc == &quot;inv_items&quot; and item.attrib and item.attrib:find(&quot;c&quot;) then
+      sendGMCP(&quot;Char.Items.Contents &quot;..item.id)
+   end
+   if checkForEcho(item.name, item.attrib) then
+     cecho(&quot;&lt;green&gt;++ &lt;white&gt;&quot; .. location:title() .. &quot;: &lt;grey&gt;&quot; .. item.id .. &quot;: &quot; .. item.name .. &quot;\n&quot;) 
+   end 
+   return &quot;Add&quot;, location
+end
+
+function phoenix.items:Remove()
+   local location = gmcp.Char.Items.Remove.location
+   if location ~= &quot;inv&quot; and location ~= &quot;room&quot; then
+      location = location:match(&quot;%d+$&quot;)
+   end
+   local loc = location .. &quot;_items&quot;
+   if not self[loc] then
+      sendGMCP(&quot;Char.Items.Inv&quot;)
+      return
+   end
+   local removed = &quot;&quot;
+   for k,v in pairs(self[loc]) do
+      if v.id*1 == gmcp.Char.Items.Remove.item.id*1 then
+         removed = table.remove(self[loc], k)
+      end
+   end
+   if checkForEcho(removed.name, removed.attrib) then
+     cecho(&quot;&lt;red&gt;-- &lt;white&gt;&quot; .. location:title() .. &quot;: &lt;grey&gt;&quot; .. removed.id .. &quot;: &quot; .. removed.name .. &quot;\n&quot;) 
+   end
+   return &quot;Remove&quot;, location
+end
+
+
+
+function phoenix.items:List()
+   local location = gmcp.Char.Items.List.location
+   if location ~= &quot;inv&quot; and location ~= &quot;room&quot; then
+      location = location:match(&quot;%d+$&quot;)
+   end
+   local loc = location .. &quot;_items&quot;
+   self[loc] = {}
+   for k,v in pairs(gmcp.Char.Items.List.items) do
+-- put the item into a local table, so it's not pointing at the existing table
+      local item = {}
+      for x,y in pairs(v) do
+        item[x] = y
+      end
+-- and now insert it into our own table.
+      table.insert(self[loc], item)
+      if loc == &quot;inv_items&quot; and v.attrib and v.attrib:find(&quot;c&quot;) then
+         sendGMCP(&quot;Char.Items.Contents &quot;..v.id)
+      end
+   end
+   return &quot;List&quot;, location
+end
+
+
+function phoenix.items:Update()
+   local location = gmcp.Char.Items.Update.location
+   if location ~= &quot;inv&quot; and location ~= &quot;room&quot; then
+      location = location:match(&quot;%d+$&quot;)
+   end
+   local loc = location .. &quot;_items&quot;
+   
+   local item = {}
+   for k,v in pairs(gmcp.Char.Items.Update.item) do
+     item[k] = v
+   end
+   local updated
+   if not self[loc] then
+     sendGMCP(&quot;Char.Items.Inv&quot;)
+     return
+   end
+--   display(item)
+   for k,v in pairs(self[loc]) do
+      if v.id*1 == item.id*1 then
+         self[loc][k] = item
+         updated = true
+         break
+      end
+   end
+   if loc == &quot;inv_items&quot; and not updated then sendGMCP(&quot;Char.Items.Inv&quot;) end
+   if loc == &quot;inv_items&quot; and item.attrib and item.attrib:find(&quot;c&quot;) then
+      sendGMCP(&quot;Char.Items.Contents &quot;..item.id)
+   end
+   return &quot;Update&quot;, location
+end
+
+function phoenix.items:StatusVars()
+   self.inv_items = {}
+   self.room_items = {}
+   sendGMCP(&quot;Char.Items.Inv&quot;)
+   sendGMCP(&quot;Char.Items.Room&quot;)
+   send(&quot; &quot;,false)
+
+end
+
+
+function checkForEcho(name, attrib)
+  local attrib = attrib or &quot;&quot;
+  local name = name or &quot;&quot;
+  local echo_items = {
+  [&quot;a monolith sigil&quot;] = true,
+  bomb = true,
+  mickey = true,
+  } 
+  local ret = false
+ --[[ if attrib:find(&quot;m&quot;) then
+    ret = true
+  elseif echo_items[name] then
+    ret = true
+  else
+    for k,v in pairs(echo_items) do
+      if k:match(name) then
+         ret = true
+      end
+    end
+  end]]
+  return true
+end
+</script>
+                <eventHandlerList/>
+            </Script>
+        </ScriptGroup>
+    </ScriptPackage>
+</MudletPackage>
